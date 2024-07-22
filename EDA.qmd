@@ -1,0 +1,65 @@
+---
+title: "ST558 Final Project - EDA"
+author: "Maggie Sweitzer"
+date: "`r Sys.Date()`"
+format: html
+editor: visual
+---
+
+## Introduction
+
+In these analyses, we will explore and model data on risk factors for diabetes from the 2015 Behavioral Risk Factor Surveillance System (BRFSS). Data are collected annually by phone using random digit dialing across all 50 states, resulting in over 250,000 adults over age 18 providing information about health conditions, health behaviors, and healthcare use. For the current analyses, we focus on the curated binary Diabetes Health Indicator Dataset. This dataset includes the variable "Diabetes_binary", which is coded as 1 to indicate a respondent has been told they have diabetes, and 0 if they have not. This variable will serve as the primary outcome for our predictions.
+
+The Diabetes Health Indicator Dataset also includes a subset of 21 additional variables selected from the broader survey based on their relevance to diabetes risk. These include the following:
+
+-   Other binary physical health indicators (1 = yes, 0 = no)
+
+    -   reported diagnosis of high blood pressure
+    -   reported diagnosis of high cholesterol
+    -   whether cholesterol has ever been checked
+    -   history of stroke
+    -   history of coronary heart disease or myocardial infarction);
+
+-   A continuous measure of body mass index (BMI)
+
+-   Binary indicators of healthy or unhealthy behaviors (1 = yes, 0 = no)
+
+    -   eating at least 1 fruit per day
+    -   eating at least 1 vegetable per day
+    -   doing any exercise beyond normal activity in the past 30 days
+    -   smoking \> 100 cigarettes lifetime
+    -   drinking \> 14 drinks/week for men or 7 drinks/week for women)
+
+-   Categorical demographic variables 
+
+    -   sex (1 = Male, 2 = Female)
+    -   age group (13 possible categories divided into 5-year bins ranging from 1 = (18 to 24) to 13 = (age 80 or older)) 
+    -   highest level of education completed (6 categories ranging from never attended school to collge graduate)
+    -   annual household income (8 categories ranging from 1 = (< $10,000) to 8 = ($75,000 or more))
+
+-   Subjective ratings of health 
+
+    -   perceived general health (5 point likert scale ranging from 1 = excellent to 5 = poor)
+    -   number of days in the past 30 in which physical health was not good
+    -   number of days in the past 30 in which mental health was not good
+    -   a binary indicator of difficulty walking or climbing stairs.
+
+In the steps below, we will conduct exploratory data analysis to identify missing values, examine the distributions of our predictor variables, and explore preliminary associations between predictor variables and the diabetes outcome.
+
+## Identifying Missing Data
+
+First, we will load necessary packages and read in the Diabetes Health Indicators Dataset.
+
+```{r message = FALSE}
+library(tidyverse)
+
+data_tbl <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv")
+
+head(data_tbl)
+```
+Next, we will determine the number of valid observations versus missing data. We see below that there are no NA values across any of the variables. 
+
+```{r}
+colSums(is.na(data_tbl))
+```
+However, this is not suprising as the BRFSS surveys contain item-specific codes for responses of "don't know" or "refused to answer". We can probe how often responses fall outside of the categories described above and recode the data into factors with levels for true responses and NA for missing observations. 
