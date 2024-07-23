@@ -62,4 +62,92 @@ Next, we will determine the number of valid observations versus missing data. We
 ```{r}
 colSums(is.na(data_tbl))
 ```
-However, this is not suprising as the BRFSS surveys contain item-specific codes for responses of "don't know" or "refused to answer". We can probe how often responses fall outside of the categories described above and recode the data into factors with levels for true responses and NA for missing observations. 
+However, this is not suprising as the BRFSS surveys contain item-specific codes for responses of "don't know" or "refused to answer". We can probe how often responses fall outside of the categories described above and recode the data into factors with levels for true responses and NA for missing observations. First, we recode categorical variables as factors, simplify naming of a few variables, and select those that we need.
+
+```{r}
+data_factors_tbl <- data_tbl |>
+  mutate(Diabetes_binary = as.factor(Diabetes_binary),
+         HighBP = as.factor(HighBP),
+         HighChol = as.factor(HighChol),
+         CholCheck = as.factor(CholCheck),
+         Smoker = as.factor(Smoker),
+         Stroke = as.factor(Stroke),
+         Heart = as.factor(HeartDiseaseorAttack),
+         PhysActivity = as.factor(PhysActivity),
+         Fruits = as.factor(Fruits),
+         Veggies = as.factor(Veggies),
+         Alcohol = as.factor(HvyAlcoholConsump),
+         GenHlth = as.factor(GenHlth),
+         DiffWalk = as.factor(DiffWalk),
+         Sex = as.factor(Sex),
+         Age = as.factor(Age),
+         Education = as.factor(Education),
+         Income = as.factor(Income)) |>
+  select(Diabetes_binary, HighBP, HighChol, CholCheck, BMI, Smoker, Stroke, Heart, PhysActivity, Fruits, Veggies, Alcohol, GenHlth, MentHlth, PhysHlth, DiffWalk, Sex, Age, Education, Income)
+
+```
+
+Next, by looking at the structure of the data set we can see that binary variables include only 0 or 1 as possible levels. This leaves BMI, MentHlth, and PhysHlth as continuous variables, and GenHlth, Age, Education, and Income as factors with > 2 categories.  
+
+```{r}
+str(data_factors_tbl)
+```
+We can examine summary statistics for continuous variables. We see below that all values for MentHlth and PhysHlth fall within the expected range of 0 to 30, whereas the maximum BMI value is 98, which seems biologically implausible. 
+
+```{r}
+data_factors_tbl |>
+  summarize(across(where(is.numeric), 
+                   list("mean" = ~ mean(.x), 
+                        "max" = ~ max(.x),
+                        "min" = ~ min(.x)),
+                   .names = "{.fn}_{.col}"))
+```
+We can view the entire distribution of BMI using a histogram. We see below that values above ~ 60 are extremely rare. Given that there is not a spike in values of 98, this suggests that this is not being used as some sort of system code for missing data. 
+
+```{r}
+ggplot(data = data_factors_tbl, aes(x = BMI)) +
+  geom_histogram()
+```
+Below we see that there are 53 people with BMI > 90 and 7 with a BMI of 98. As such, it may be that these values represent rare but true values at the outer limits of the possible range for people with severe morbid obesity. 
+
+```{r}
+data_factors_tbl |>
+  count(BMI > 90) 
+
+data_factors_tbl |>
+  count(BMI > 97)
+```
+We can also view MentHlth and PhysHlth in this way. We see that for both variables, the vast majority of respondents (~160,000 and 175,000, respectively) say they had 0 out of 30 days in which their health was not good, while a sizeable subset (~12,000 and 19,000, respectively) indicate their health was poor across all 30 days. 
+
+```{r}
+ggplot(data = data_factors_tbl, aes(x = MentHlth)) +
+  geom_histogram()
+
+ggplot(data = data_factors_tbl, aes(x = PhysHlth)) +
+  geom_histogram()
+
+data_factors_tbl |>
+  count(PhysHlth == 0)
+
+data_factors_tbl |>
+  count(PhysHlth == 30)
+
+data_factors_tbl |>
+  count(MentHlth == 0)
+
+data_factors_tbl |>
+  count(MentHlth == 30)
+```
+
+We can now turn to exploring frequencies of categorical variables with > 2 levels. We see below that all values fall within the expected range of coded categories, indicating that the data set has been fully cleaned and includes only respondents with complete data. 
+
+```{r}
+g <- ggplot(data_factors_tbl) + geom_bar()
+
+g + aes(x = GenHlth)
+g + aes(x = Age)
+g + aes(x = Education)
+g + aes(x = Income)
+
+```
+
