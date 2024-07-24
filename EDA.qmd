@@ -150,4 +150,121 @@ g + aes(x = Education)
 g + aes(x = Income)
 
 ```
+## Summarizing Data
 
+We have already examined some of the distrubtions above, but we can also take a look at the binary outcomes to get a sense of the prevalence of diabetes and each of the risk factors. 
+
+```{r}
+g + aes(x = Diabetes_binary) 
+
+data_factors_tbl |>
+  count(Diabetes_binary)
+
+g + aes(x = HighBP)
+g + aes(x = HighChol)
+g + aes(x = CholCheck)
+g + aes(x = Smoker)
+g + aes(x = Stroke)
+g + aes(x = Alcohol)
+g + aes(x = Heart)
+g + aes(x = PhysActivity)
+g + aes(x = Fruits)
+g + aes(x = Veggies)
+g + aes(x = DiffWalk)
+```
+We can see that some risk factors are more common than others. High blood pressure, high cholesterol, and history of smoking > 100 cigarettes are extremely common, whereas history of stroke or heart disease are far less common. 
+
+It is likely that many of these risk factors co-occur. Below, we create contingency tables to examine preliminary associations between predictors and with the diabetes outcome. 
+
+```{r}
+data_factors_tbl |>
+  group_by(HighBP, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count)
+
+data_factors_tbl |>
+  group_by(HighChol, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count)
+
+data_factors_tbl |>
+  group_by(Stroke, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count)
+
+data_factors_tbl |>
+  group_by(Heart, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count)
+
+data_factors_tbl |>
+  group_by(HighBP, HighChol) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = HighChol, values_from = count)
+
+data_factors_tbl |>
+  group_by(Stroke, Heart) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Heart, values_from = count)
+```
+We can see from the tables above that the majority of people with diabetes also have high blood pressure and high cholesterol. Moreover, the majority of people with high blood pressure also have high cholesterol, and vice versa. Heart disease and stroke are not endorsed by the majority of respondents with diabetes, likely due to their lower overall prevalence, but the pattern of responses supports their status as risk factors. 
+
+One additional check we can make with health conditions is to examine how often not having high cholesterol is due to never having this checked. 
+
+```{r}
+data_factors_tbl |>
+  group_by(CholCheck, HighChol) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = HighChol, values_from = count)
+```
+We can see that the vast majority of people who report not having high cholesterol do indicate that they have had their cholesterol checked. It is interesting that 1981 people report that they have high cholesterol despite also indicating that they have never had their cholesterol checked, which is difficult to interpret.
+
+Next, we look at health behaviors. 
+
+```{r}
+data_factors_tbl |>
+  group_by(Smoker, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count)
+
+data_factors_tbl |>
+  group_by(Alcohol, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count)
+
+data_factors_tbl |>
+  group_by(PhysActivity, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count)
+
+data_factors_tbl |>
+  group_by(Veggies, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count)
+
+data_factors_tbl |>
+  group_by(Fruits, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count)
+```
+
+History of smoking and low physical activity appear to be more common in people with diabetes, but in general the patterns are not as striking as those of high blood pressure and cholesterol. 
+
+```{r}
+data_factors_tbl |>
+  group_by(Smoker, Alcohol) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Alcohol, values_from = count)
+
+data_factors_tbl |>
+  group_by(Smoker, PhysActivity) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = PhysActivity, values_from = count)
+
+data_factors_tbl |>
+  group_by(Fruits, Veggies) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Veggies, values_from = count)
+```
+
+Exploring contingencies between risk factors, we see that people who drink heavily and people with low physical activity are more likely to have smoked > 100 cigarettes. In addition, people who don't eat veggies much more likely to not eat fruits and vice versa.
