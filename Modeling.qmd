@@ -6,17 +6,64 @@ format: html
 editor: visual
 ---
 
-## Quarto
+## Introduction
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
 
-## Running Code
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+## Data Split
+
+We begin by splitting our data using the caret package. We load necessary libraries and set a seed so that our results will be reproducible. Then the code below will create an index of randomly selected row numbers comprising 70% of the data set. We can use this index to subset the identified 70% of rows into a training data set, and then the remaining 30% of rows into a test data set.
+
+```{r message = FALSE}
+library(tidyverse)
+library(haven)
+library(knitr)
+library(caret)
+
+set.seed(25)
+
+trainIndex <- createDataPartition(
+  data_factors_tbl$Diabetes_binary, p = 0.7, list = FALSE)
+
+head(trainIndex)
+
+dataTrain <- data_factors_tbl[trainIndex, ]
+dataTest <- data_factors_tbl[-trainIndex, ]
+
+```
+We can also preprocess the data sets using the caret package. Below, we center and standardize our 3 numerical variables. First, we use preProcess to define the transformations we want to make. Then, these transformations are applied using the predict function, and modified train and test data sets are generated with centered, standardized numeric variables. 
+
+```{r}
+preProcValues <- preProcess(dataTrain, method = c("center", "scale"))
+
+trainTransformed <- predict(preProcValues, dataTrain)
+
+testTransformed <- predict(preProcValues, dataTest)
+as_tibble(trainTransformed)
+as_tibble(testTransformed)
+
+```
+## Data Modeling
+
+Below, we will use three different approaches to predict diabetes outcomes within our data set. In order to evaluate our predictive models, we will use logLoss as our metric. LogLoss is technically computed as -1*the log of the likelihood function. In practice, this means: a) calculating the "corrected" probability for each predicted observation, which is equal to the predicted probability for "success" trials and 1 - the predicted probability for "fail" trials; b) taking the log of each "corrected" probability; c) averaging these together; and d) multiplying the result by -1. Intuitively, we can see that for part a, if a predicted probability is closer to the actual outcome (e.g., .9 when outcome = 1 or .1 when outcome = 0), the resulting "corrected" value will be higher (i.e., closer to 1), and thus the log will have a smaller negative value. Taking the average of these and multiplying by -1 results in a metric in which the smaller the number, the better job the model did in coming close to predicting actual outcomes. 
+
+This approach is preferable to other metrics for logistic regression for several reasons. Mean squared error (MSE) is better suited to continuous outcomes, and is inappropriate for classification. Accuracy can be used for classification, but logLoss provides greater information. Specifically, the corrected probabilities used to compute logLoss provide a weighting for how close the prediction is to the correct answer, whereas accuracy would simply count each prediction as correct or incorrect. As such, logLoss captures additional nuance that is missed with a simple index of accuracy. 
+
+### Logistic Regression 
+
+Logistic regression falls under the umbrella of generalized linear models, which expand beyond the basic linear regression framework to incorporate non-normal outcome distributions. Logistic regression, in particular, allows us to model the probability of a binary outcome. Logistic regression uses the same building blocks of the general linear model, which means that we are modeling a linear relationship between the parameter estimates (i.e., coefficients) of the predictor variables and the outcome. One of the assumptions of the linear model is that the outcome can take on any value on the real number line, positive or negative (even if those values are not theoretically meaningful). This assumption is clearly violated in the case of a binary outcome, in which the predicted values can only fall between 0 and 1. Thus, in order to model a linear relationship, the probability outcome must be transformed using a link function (specifically a logit function in the case of logistic regression), which removes the constraints of the probability outcome by mapping this onto the entire real number line. This means that we are not directly modeling probability. Instead, the logit function transforms our outcome into log odds. 
+
+In our dataset, we are interested in predicting the probability of being diagnosed with diabetes as a function of our predictor variables. Our diabetes outcome is binary, and thus logistic regression is an ideal framework for our predictive modeling. 
+
+
+
+### Classification Tree
 
 ```{r}
 1 + 1
 ```
+
+### Random Forest
 
 You can add options to executable code like this
 
@@ -24,5 +71,7 @@ You can add options to executable code like this
 #| echo: false
 2 * 2
 ```
+
+## Final Model Selection 
 
 The `echo: false` option disables the printing of code (only output is displayed).
