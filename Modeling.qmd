@@ -161,11 +161,11 @@ tree_fit3
 
 ### Random Forest
 
-A random forest model is the ensemble version of the classification tree, in that it constructs multiple trees and then aggregates their predictions to form an optimal model. A random forest model of regression trees can use the mean predicted value across models, whereas the aggregate of classification trees will typically use the modal predicted value. Random forests offer an advantage over a single tree because a single tree may easily overfit the data by creating complex branches that are very specific to the training model. By contrast, random forests reduce the variance and thus are less likely to over-fit. Random forests randomly subset the features that are used to identify branching points, which reduces the correlation between individual trees (again reducing the risk of over-fitting). This can be helpful in cases where a particular feature might otherwise dominate an individual decision tree. In the model below, we focus on the full model (Model 3) and specify the number of variables to be randomly selected for each subset as our tuning parameter (mtry), with values ranging from 8 to 12.
+A random forest model is the ensemble version of the classification tree, in that it constructs multiple trees and then aggregates their predictions to form an optimal model. A random forest model of regression trees can use the mean predicted value across models, whereas the aggregate of classification trees will typically use the modal predicted value. Random forests offer an advantage over a single tree because a single tree may easily overfit the data by creating complex branches that are very specific to the training model. By contrast, random forests reduce the variance and thus are less likely to over-fit. Random forests randomly subset the features that are used to identify branching points, which reduces the correlation between individual trees (again reducing the risk of over-fitting). This can be helpful in cases where a particular feature might otherwise dominate an individual decision tree. In the model below, we focus on the full model (Model 3) and specify the number of variables to be randomly selected for each subset as our tuning parameter (mtry), with values ranging from 10 to 12. (Note that this is a smaller range than initially tested in order to shorten processing time.)
 
 #### Random Forest Model 3: Full Model Including Health Conditions, Health Behaviors, Demographics, and Subjective Ratings
 
-```{r warning = FALSE, eval = FALSE}
+```{r warning = FALSE}
 rf_fit3 <- train(Diabetes_binary ~ HighBP + HighChol + Stroke + Heart + BMI + Sex + Age + Education + Smoker + Alcohol + PhysActivity + Fruits + Veggies + MentHlth + PhysHlth + DiffWalk, data = dataTrain,
              method = "rf",
              metric = "logLoss",
@@ -175,7 +175,7 @@ rf_fit3 <- train(Diabetes_binary ~ HighBP + HighChol + Stroke + Heart + BMI + Se
              trControl = trainControl(method = "cv", number = 3, 
                                       classProbs = TRUE, 
                                       summaryFunction = mnLogLoss),
-             tuneGrid = data.frame(mtry = 8:12))
+             tuneGrid = data.frame(mtry = 10:12))
 
 rf_fit3
 ```
@@ -191,7 +191,7 @@ First, we use the parameters derived from training each model and use these to p
 ```{r}
 log_pred <- predict.train(log_fit3, newdata = dataTest, type = "prob")
 tree_pred <- predict.train(tree_fit3, newdata = dataTest, type = "prob")
-#rf_pred <- predict.train(rf_fit3, newdata = dataTest, type = "prob")
+rf_pred <- predict.train(rf_fit3, newdata = dataTest, type = "prob")
 ```
 
 Next, we convert the Diabetes_binary variable within the test data set to a numeric variable that takes on values of 0 (no diabetes) or 1 (diabetes) to use for calculating logLoss with the Metrics package. For each model, we include the numeric test data variable and the predicted "Yes" column to obtain this value.
@@ -218,5 +218,9 @@ logLoss(dataTest$Diabetes_num, tree_pred$Yes)
 #### Random Forest Model
 
 ```{r}
-#logLoss(dataTest$Diabetes_num, rf_pred$Yes)
+logLoss(dataTest$Diabetes_num, rf_pred$Yes)
 ```
+### Declaring a Winner
+
+For our test data set, Model 3 from our logistic regression (logLoss = .33) had a slight edge over the classification tree (logLoss = .36), whereas the random forest model resulted in an infinite logLoss. Thus, for this data set, logistic regression using all of our selected independent variables is the optimal approach for predicting diabetes. The poor performance of the random forest is surprising given its theoretical improvement over a single classification tree. Although the logLoss for the random forest model was higher using the training data set, this could have reflected the reduction in variance from aggregating across multiple trees, which should have prevented over-fitting. If this were the case, we might have expected the random forest model to perform better than the classification tree on the test data, as it should do a better job of generalizing the fit to a different data set. It is possible that the low prevalence of diabetes and/or the relatively limited number of predictors could have mitigated any advantages of the random forest model and contributed to our findings that the logistic regression approach won out!   
+

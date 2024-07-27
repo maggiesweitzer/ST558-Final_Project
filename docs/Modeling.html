@@ -411,7 +411,7 @@ The final value used for the model was cp = 0.001.</code></pre>
 </section>
 <section id="random-forest" class="level3">
 <h3 class="anchored" data-anchor-id="random-forest">Random Forest</h3>
-<p>A random forest model is the ensemble version of the classification tree, in that it constructs multiple trees and then aggregates their predictions to form an optimal model. A random forest model of regression trees can use the mean predicted value across models, whereas the aggregate of classification trees will typically use the modal predicted value. Random forests offer an advantage over a single tree because a single tree may easily overfit the data by creating complex branches that are very specific to the training model. By contrast, random forests reduce the variance and thus are less likely to over-fit. Random forests randomly subset the features that are used to identify branching points, which reduces the correlation between individual trees (again reducing the risk of over-fitting). This can be helpful in cases where a particular feature might otherwise dominate an individual decision tree. In the model below, we focus on the full model (Model 3) and specify the number of variables to be randomly selected for each subset as our tuning parameter (mtry), with values ranging from 8 to 12.</p>
+<p>A random forest model is the ensemble version of the classification tree, in that it constructs multiple trees and then aggregates their predictions to form an optimal model. A random forest model of regression trees can use the mean predicted value across models, whereas the aggregate of classification trees will typically use the modal predicted value. Random forests offer an advantage over a single tree because a single tree may easily overfit the data by creating complex branches that are very specific to the training model. By contrast, random forests reduce the variance and thus are less likely to over-fit. Random forests randomly subset the features that are used to identify branching points, which reduces the correlation between individual trees (again reducing the risk of over-fitting). This can be helpful in cases where a particular feature might otherwise dominate an individual decision tree. In the model below, we focus on the full model (Model 3) and specify the number of variables to be randomly selected for each subset as our tuning parameter (mtry), with values ranging from 10 to 12. (Note that this is a smaller range than initially tested in order to shorten processing time.)</p>
 <section id="random-forest-model-3-full-model-including-health-conditions-health-behaviors-demographics-and-subjective-ratings" class="level4">
 <h4 class="anchored" data-anchor-id="random-forest-model-3-full-model-including-health-conditions-health-behaviors-demographics-and-subjective-ratings">Random Forest Model 3: Full Model Including Health Conditions, Health Behaviors, Demographics, and Subjective Ratings</h4>
 <div class="cell">
@@ -424,9 +424,29 @@ The final value used for the model was cp = 0.001.</code></pre>
 <span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>             <span class="at">trControl =</span> <span class="fu">trainControl</span>(<span class="at">method =</span> <span class="st">"cv"</span>, <span class="at">number =</span> <span class="dv">3</span>, </span>
 <span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">classProbs =</span> <span class="cn">TRUE</span>, </span>
 <span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">summaryFunction =</span> mnLogLoss),</span>
-<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>             <span class="at">tuneGrid =</span> <span class="fu">data.frame</span>(<span class="at">mtry =</span> <span class="dv">8</span><span class="sc">:</span><span class="dv">12</span>))</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>             <span class="at">tuneGrid =</span> <span class="fu">data.frame</span>(<span class="at">mtry =</span> <span class="dv">10</span><span class="sc">:</span><span class="dv">12</span>))</span>
 <span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>rf_fit3</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Random Forest 
+
+177577 samples
+    16 predictor
+     2 classes: 'No', 'Yes' 
+
+Pre-processing: centered (31), scaled (31) 
+Resampling: Cross-Validated (3 fold) 
+Summary of sample sizes: 118384, 118386, 118384 
+Resampling results across tuning parameters:
+
+  mtry  logLoss  
+  10    0.6308132
+  11    0.6329631
+  12    0.6361191
+
+logLoss was used to select the optimal model using the smallest value.
+The final value used for the model was mtry = 10.</code></pre>
+</div>
 </div>
 </section>
 </section>
@@ -437,21 +457,21 @@ The final value used for the model was cp = 0.001.</code></pre>
 <p>We will now test the top model from each of our statistical approaches using our test data set to determine the winner! Although models 1 and 3 were tied for the best classification tree model, we will select model 3 in order to compare our predictions for this model across all three methods.</p>
 <p>First, we use the parameters derived from training each model and use these to predict outcomes with the test data. The code below will output the predicted probability of having diabetes for each observation in the test data using the trained parameters. These predictions will be saved in the named “pred” file in a column labeled “Yes”.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>log_pred <span class="ot">&lt;-</span> <span class="fu">predict.train</span>(log_fit3, <span class="at">newdata =</span> dataTest, <span class="at">type =</span> <span class="st">"prob"</span>)</span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>tree_pred <span class="ot">&lt;-</span> <span class="fu">predict.train</span>(tree_fit3, <span class="at">newdata =</span> dataTest, <span class="at">type =</span> <span class="st">"prob"</span>)</span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="co">#rf_pred &lt;- predict.train(rf_fit3, newdata = dataTest, type = "prob")</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>log_pred <span class="ot">&lt;-</span> <span class="fu">predict.train</span>(log_fit3, <span class="at">newdata =</span> dataTest, <span class="at">type =</span> <span class="st">"prob"</span>)</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>tree_pred <span class="ot">&lt;-</span> <span class="fu">predict.train</span>(tree_fit3, <span class="at">newdata =</span> dataTest, <span class="at">type =</span> <span class="st">"prob"</span>)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>rf_pred <span class="ot">&lt;-</span> <span class="fu">predict.train</span>(rf_fit3, <span class="at">newdata =</span> dataTest, <span class="at">type =</span> <span class="st">"prob"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Next, we convert the Diabetes_binary variable within the test data set to a numeric variable that takes on values of 0 (no diabetes) or 1 (diabetes) to use for calculating logLoss with the Metrics package. For each model, we include the numeric test data variable and the predicted “Yes” column to obtain this value.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>dataTest <span class="ot">&lt;-</span> dataTest <span class="sc">|&gt;</span></span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">Diabetes_num =</span> <span class="fu">as.numeric</span>(<span class="fu">ifelse</span>(Diabetes_binary <span class="sc">==</span> <span class="st">"Yes"</span>, <span class="dv">1</span>, <span class="dv">0</span>)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>dataTest <span class="ot">&lt;-</span> dataTest <span class="sc">|&gt;</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">Diabetes_num =</span> <span class="fu">as.numeric</span>(<span class="fu">ifelse</span>(Diabetes_binary <span class="sc">==</span> <span class="st">"Yes"</span>, <span class="dv">1</span>, <span class="dv">0</span>)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <section id="logloss-for-test-data-predictions" class="level3">
 <h3 class="anchored" data-anchor-id="logloss-for-test-data-predictions">LogLoss for Test Data Predictions</h3>
 <section id="logistic-regression-model" class="level4">
 <h4 class="anchored" data-anchor-id="logistic-regression-model">Logistic Regression Model</h4>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">logLoss</span>(dataTest<span class="sc">$</span>Diabetes_num, log_pred<span class="sc">$</span>Yes)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">logLoss</span>(dataTest<span class="sc">$</span>Diabetes_num, log_pred<span class="sc">$</span>Yes)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.3335727</code></pre>
 </div>
@@ -460,7 +480,7 @@ The final value used for the model was cp = 0.001.</code></pre>
 <section id="classification-tree-model" class="level4">
 <h4 class="anchored" data-anchor-id="classification-tree-model">Classification Tree Model</h4>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">logLoss</span>(dataTest<span class="sc">$</span>Diabetes_num, tree_pred<span class="sc">$</span>Yes)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">logLoss</span>(dataTest<span class="sc">$</span>Diabetes_num, tree_pred<span class="sc">$</span>Yes)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>[1] 0.3578572</code></pre>
 </div>
@@ -469,11 +489,18 @@ The final value used for the model was cp = 0.001.</code></pre>
 <section id="random-forest-model" class="level4">
 <h4 class="anchored" data-anchor-id="random-forest-model">Random Forest Model</h4>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co">#logLoss(dataTest$Diabetes_num, rf_pred$Yes)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">logLoss</span>(dataTest<span class="sc">$</span>Diabetes_num, rf_pred<span class="sc">$</span>Yes)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] Inf</code></pre>
 </div>
-
-
+</div>
 </section>
+</section>
+<section id="declaring-a-winner" class="level3">
+<h3 class="anchored" data-anchor-id="declaring-a-winner">Declaring a Winner</h3>
+<p>For our test data set, Model 3 from our logistic regression (logLoss = .33) had a slight edge over the classification tree (logLoss = .36), whereas the random forest model resulted in an infinite logLoss. Thus, for this data set, logistic regression using all of our selected independent variables is the optimal approach for predicting diabetes. The poor performance of the random forest is surprising given its theoretical improvement over a single classification tree. Although the logLoss for the random forest model was higher using the training data set, this could have reflected the reduction in variance from aggregating across multiple trees, which should have prevented over-fitting. If this were the case, we might have expected the random forest model to perform better than the classification tree on the test data, as it should do a better job of generalizing the fit to a different data set. It is possible that the low prevalence of diabetes and/or the relatively limited number of predictors could have mitigated any advantages of the random forest model and contributed to our findings that the logistic regression approach won out!</p>
+
+
 </section>
 </section>
 
