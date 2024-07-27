@@ -8,70 +8,215 @@ editor: visual
 
 ## Introduction
 
+In these analyses, we will evaluate several predictive models using data on risk factors for diabetes from the 2015 Behavioral Risk Factor Surveillance System (BRFSS). Data are collected annually by phone using random digit dialing across all 50 states, resulting in over 250,000 adults over age 18 providing information about health conditions, health behaviors, and healthcare use. For the current analyses, we focus on the curated binary Diabetes Health Indicator Dataset. This dataset includes the variable "Diabetes_binary", which is coded as 1 to indicate a respondent has been told they have diabetes, and 0 if they have not. This variable will serve as the primary outcome for our predictions.
 
+The Diabetes Health Indicator Dataset also includes a subset of additional variables selected from the broader survey based on their relevance to diabetes risk, which we will use for our predictive models. These include 5 variables pertaining to objective health measures and/or conditions (high cholesterol, high blood pressure, BMI, history of stroke, and history of heart disease); 5 variables pertaining to health behaviors (history of smoking, heavy alcohol consumption, regular physical activity, eating daily vegetables, and eating daily fruits); 3 demographic variables (sex, age, and education); and 3 subjective health measures (days of poor mental health in past month, days of poor physical health in the past month, and having difficulty walking).
+
+We will test 3 different predictive models, each using 3 different statistical approaches. Our first model will consider objective indices of health conditions plus demographics (8 variables total). Our second model will retain demographic variables but will replace objective health conditions with health behaviors. Finally, our third model will include all predictors described above, including demographics, health conditions, health behaviors, and perceived health.
+
+We will begin with a subset of 70% of the data to train each of our models using logistic regression, classification trees, and random forest plots with 5-fold cross-validation. Then, we will apply our models to the remaining 30% of the data to test which model does the best at predicting our diabetes outcome.
 
 ## Data Split
 
-We begin by splitting our data using the caret package. We load necessary libraries and set a seed so that our results will be reproducible. Then the code below will create an index of randomly selected row numbers comprising 70% of the data set. We can use this index to subset the identified 70% of rows into a training data set, and then the remaining 30% of rows into a test data set.
+We begin by splitting our data using the caret package. We load necessary libraries, read in our data and create factors as before, and set a seed so that our results will be reproducible. Then the code below will create an index of randomly selected row numbers comprising 70% of the data set. We can use this index to subset the identified 70% of rows into a training data set, and then the remaining 30% of rows into a test data set.
 
 ```{r message = FALSE}
 library(tidyverse)
-library(haven)
-library(knitr)
 library(caret)
+library(Metrics)
 
 set.seed(25)
+
+data_tbl <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv")
+
+data_factors_tbl <- data_tbl |>
+  mutate(Diabetes_binary = factor(Diabetes_binary, labels = c("No", "Yes")),
+         HighBP = factor(HighBP, labels = c("No", "Yes")),
+         HighChol = factor(HighChol, labels = c("No", "Yes")),
+         CholCheck = factor(CholCheck, labels = c("No", "Yes")),
+         Smoker = factor(Smoker, labels = c("No", "Yes")),
+         Stroke = factor(Stroke, labels = c("No", "Yes")),
+         Heart = factor(HeartDiseaseorAttack, labels = c("No", "Yes")),
+         PhysActivity = factor(PhysActivity, labels = c("No", "Yes")),
+         Fruits = factor(Fruits, labels = c("No", "Yes")),
+         Veggies = factor(Veggies, labels = c("No", "Yes")),
+         Alcohol = factor(HvyAlcoholConsump, labels = c("No", "Yes")),
+         DiffWalk = factor(DiffWalk, labels = c("No", "Yes")),
+         Sex = factor(Sex, labels = c("Male", "Female")),
+         Age = factor(Age, labels = c("Age18to24", "Age25to29", "Age30to34", "Age35to39", "Age40to44", "Age45to49", "Age50to54", "Age55to59", "Age60to64", "Age65to69", "Age70to74", "Age75to79", "Age80orOlder")),
+         Education = factor(Education, labels = c("NoSchool", "Elementary", "SomeHS", "HSGrad", "SomeCollege", "CollegeGrad")))|>
+  select(Diabetes_binary, HighBP, HighChol, CholCheck, BMI, Smoker, Stroke, Heart, PhysActivity, Fruits, Veggies, Alcohol, MentHlth, PhysHlth, DiffWalk, Sex, Age, Education)
 
 trainIndex <- createDataPartition(
   data_factors_tbl$Diabetes_binary, p = 0.7, list = FALSE)
 
-head(trainIndex)
-
 dataTrain <- data_factors_tbl[trainIndex, ]
 dataTest <- data_factors_tbl[-trainIndex, ]
-
 ```
-We can also preprocess the data sets using the caret package. Below, we center and standardize our 3 numerical variables. First, we use preProcess to define the transformations we want to make. Then, these transformations are applied using the predict function, and modified train and test data sets are generated with centered, standardized numeric variables. 
 
-```{r}
-preProcValues <- preProcess(dataTrain, method = c("center", "scale"))
-
-trainTransformed <- predict(preProcValues, dataTrain)
-
-testTransformed <- predict(preProcValues, dataTest)
-as_tibble(trainTransformed)
-as_tibble(testTransformed)
-
-```
 ## Data Modeling
 
-Below, we will use three different approaches to predict diabetes outcomes within our data set. In order to evaluate our predictive models, we will use logLoss as our metric. LogLoss is technically computed as -1*the log of the likelihood function. In practice, this means: a) calculating the "corrected" probability for each predicted observation, which is equal to the predicted probability for "success" trials and 1 - the predicted probability for "fail" trials; b) taking the log of each "corrected" probability; c) averaging these together; and d) multiplying the result by -1. Intuitively, we can see that for part a, if a predicted probability is closer to the actual outcome (e.g., .9 when outcome = 1 or .1 when outcome = 0), the resulting "corrected" value will be higher (i.e., closer to 1), and thus the log will have a smaller negative value. Taking the average of these and multiplying by -1 results in a metric in which the smaller the number, the better job the model did in coming close to predicting actual outcomes. 
+Below, we will use three different approaches to predict diabetes outcomes within our data set. In order to evaluate our predictive models, we will use logLoss as our metric. LogLoss is technically computed as -1\*the log of the likelihood function. In practice, this means: a) calculating the "corrected" probability for each predicted observation, which is equal to the predicted probability for "success" trials and 1 - the predicted probability for "fail" trials; b) taking the log of each "corrected" probability; c) averaging these together; and d) multiplying the result by -1. Intuitively, we can see that for part a, if a predicted probability is closer to the actual outcome (e.g., .9 when outcome = 1 or .1 when outcome = 0), the resulting "corrected" value will be higher (i.e., closer to 1), and thus the log will have a smaller negative value. Taking the average of these and multiplying by -1 results in a metric in which the smaller the number, the better job the model did in coming close to predicting actual outcomes.
 
-This approach is preferable to other metrics for logistic regression for several reasons. Mean squared error (MSE) is better suited to continuous outcomes, and is inappropriate for classification. Accuracy can be used for classification, but logLoss provides greater information. Specifically, the corrected probabilities used to compute logLoss provide a weighting for how close the prediction is to the correct answer, whereas accuracy would simply count each prediction as correct or incorrect. As such, logLoss captures additional nuance that is missed with a simple index of accuracy. 
+This approach is preferable to other metrics for logistic regression for several reasons. Mean squared error (MSE) is better suited to continuous outcomes, and is inappropriate for classification. Accuracy can be used for classification, but logLoss provides greater information. Specifically, the corrected probabilities used to compute logLoss provide a weighting for how close the prediction is to the correct answer, whereas accuracy would simply count each prediction as correct or incorrect. As such, logLoss captures additional nuance that is missed with a simple index of accuracy.
 
-### Logistic Regression 
+### Logistic Regression
 
-Logistic regression falls under the umbrella of generalized linear models, which expand beyond the basic linear regression framework to incorporate non-normal outcome distributions. Logistic regression, in particular, allows us to model the probability of a binary outcome. Logistic regression uses the same building blocks of the general linear model, which means that we are modeling a linear relationship between the parameter estimates (i.e., coefficients) of the predictor variables and the outcome. One of the assumptions of the linear model is that the outcome can take on any value on the real number line, positive or negative (even if those values are not theoretically meaningful). This assumption is clearly violated in the case of a binary outcome, in which the predicted values can only fall between 0 and 1. Thus, in order to model a linear relationship, the probability outcome must be transformed using a link function (specifically a logit function in the case of logistic regression), which removes the constraints of the probability outcome by mapping this onto the entire real number line. This means that we are not directly modeling probability. Instead, the logit function transforms our outcome into log odds. 
+Logistic regression falls under the umbrella of generalized linear models, which expand beyond the basic linear regression framework to incorporate non-normal outcome distributions. Logistic regression, in particular, allows us to model the probability of a binary outcome. Logistic regression uses the same building blocks of the general linear model, which means that we are modeling a linear relationship between the parameter estimates (i.e., coefficients) of the predictor variables and the outcome. One of the assumptions of the linear model is that the outcome can take on any value on the real number line, positive or negative (even if those values are not theoretically meaningful). This assumption is clearly violated in the case of a binary outcome, in which the predicted values can only fall between 0 and 1. Thus, in order to model a linear relationship, the probability outcome must be transformed using a link function (specifically a logit function in the case of logistic regression), which removes the constraints of the probability outcome by mapping this onto the entire real number line. This means that we are not directly modeling probability. Instead, the logit function transforms our outcome into log odds.
 
-In our dataset, we are interested in predicting the probability of being diagnosed with diabetes as a function of our predictor variables. Our diabetes outcome is binary, and thus logistic regression is an ideal framework for our predictive modeling. 
+In our dataset, we are interested in predicting the probability of being diagnosed with diabetes as a function of our predictor variables. Our diabetes outcome is binary, and thus logistic regression is an ideal framework for our predictive modeling.
 
+Each of the models below first sets up the variables we are testing as predictors and the data set these are drawn from. We specify that we are using a generalized linear model (glm) as our method, with a binomial outcome. We can include preprocessing (centering and scaling) within our code. The traincontrol function then allows us to specify that we will use 5-fold cross-validation, and that we will obtain probabilities for each of our predicted outcomes, which will be used to calculate logLoss as our summary metric.
 
+#### Logistic Regression Model 1: Objective Health Conditions and Demographics Model
+
+```{r warning = FALSE}
+log_fit1 <- train(Diabetes_binary ~ HighBP + HighChol + BMI + Stroke + Heart + Sex + Age + Education, data = dataTrain,
+             method = "glm",
+             family = "binomial",
+             preProcess = c("center", "scale"),
+             trControl = trainControl(method = "cv", number = 5, 
+                                      classProbs = TRUE, 
+                                      summaryFunction = mnLogLoss))
+
+log_fit1
+```
+#### Logistic Regression Model 2: Health Behaviors and Demographics Model
+
+```{r warning = FALSE}
+log_fit2 <- train(Diabetes_binary ~ Sex + Age + Education + Smoker + Alcohol + PhysActivity + Fruits + Veggies, data = dataTrain,
+             method = "glm",
+             family = "binomial",
+             preProcess = c("center", "scale"),
+             trControl = trainControl(method = "cv", number = 5, 
+                                      classProbs = TRUE, 
+                                      summaryFunction = mnLogLoss))
+
+log_fit2
+```
+#### Logistic Regression Model 3: Full Model Including Health Conditions, Health Behaviors, Demographics, and Subjective Ratings
+
+```{r warning = FALSE}
+log_fit3 <- train(Diabetes_binary ~ HighBP + HighChol + Stroke + Heart + BMI + Sex + Age + Education + Smoker + Alcohol + PhysActivity + Fruits + Veggies , data = dataTrain,
+             method = "glm",
+             family = "binomial",
+             preProcess = c("center", "scale"),
+             trControl = trainControl(method = "cv", number = 5, 
+                                      classProbs = TRUE, 
+                                      summaryFunction = mnLogLoss))
+
+log_fit3
+```
 
 ### Classification Tree
 
+Fitting a classification tree is another approach to predicting a binomial outcome. In this approach, the model will attempt to minimize how far our predictions deviate from the actual outcome by splitting the data into different "regions", with different predictions for different regions. The split that minimizes logLoss then serves as the initial "branch" for the tree. From there, additional splits can be made using the same process until an optimal fit is achieved.
+
+Below, we set up each model to be tested as before, specify the classification tree method and our logLoss metric, preprocess the data, and specify the same 5-fold cross-validation as we used in our logistic regression models. We then specify our tuning parameters, which we use to vary the complexity of the branching decisions in our model. Specifically, a smaller value for complexity will allow for more branching. The tested models will apply cycle through our specified range of complexity values to determine the best fit. (Note that in many cases a broader range of values was initially tested, but what is shown below encompasses the optimal value and any variability that could be seen in logLoss outcomes.)
+
+#### Classification Tree Model 1: Objective Health Conditions and Demographics Model
+
 ```{r}
-1 + 1
+tree_fit1 <- train(Diabetes_binary ~ HighBP + HighChol + BMI + Stroke + Heart + Sex + Age + Education, data = dataTrain,
+             method = "rpart",
+             metric = "logLoss",
+             preProcess = c("center", "scale"),
+             trControl = trainControl(method = "cv", number = 5, 
+                                      classProbs = TRUE, 
+                                      summaryFunction = mnLogLoss),
+             tuneGrid = expand.grid(cp = seq(from = .001, to = .01, by = .001)))
+
+tree_fit1
+```
+
+#### Classification Tree Model 2: Health Behaviors and Demographics Model
+
+```{r warning = FALSE}
+tree_fit2 <- train(Diabetes_binary ~ Sex + Age + Education + Smoker + Alcohol + PhysActivity + Fruits + Veggies, data = dataTrain,
+             method = "rpart",
+             metric = "logLoss",
+             preProcess = c("center", "scale"),
+             trControl = trainControl(method = "cv", number = 5, 
+                                      classProbs = TRUE, 
+                                      summaryFunction = mnLogLoss),
+             tuneGrid = expand.grid(cp = seq(from = .001, to = .01, by = .001)))
+
+tree_fit2
+```
+
+#### Classification Tree Model 3: Full Model Including Health Conditions, Health Behaviors, Demographics, and Subjective Ratings
+
+```{r warning = FALSE}
+tree_fit3 <- train(Diabetes_binary ~ HighBP + HighChol + Stroke + Heart + BMI + Sex + Age + Education + Smoker + Alcohol + PhysActivity + Fruits + Veggies + MentHlth + PhysHlth + DiffWalk, data = dataTrain,
+             method = "rpart",
+             metric = "logLoss",
+             preProcess = c("center", "scale"),
+             trControl = trainControl(method = "cv", number = 5, 
+                                      classProbs = TRUE, 
+                                      summaryFunction = mnLogLoss),
+             tuneGrid = expand.grid(cp = seq(from = .001, to = .01, by = .001)))
+
+tree_fit3
 ```
 
 ### Random Forest
 
-You can add options to executable code like this
+A random forest model is the ensemble version of the classification tree, in that it constructs multiple trees and then aggregates their predictions to form an optimal model. A random forest model of regression trees can use the mean predicted value across models, whereas the aggregate of classification trees will typically use the modal predicted value. Random forests offer an advantage over a single tree because a single tree may easily overfit the data by creating complex branches that are very specific to the training model. By contrast, random forests reduce the variance and thus are less likely to over-fit. Random forests randomly subset the features that are used to identify branching points, which reduces the correlation between individual trees (again reducing the risk of over-fitting). This can be helpful in cases where a particular feature might otherwise dominate an individual decision tree. In the model below, we focus on the full model (Model 3) and specify the number of variables to be randomly selected for each subset as our tuning parameter (mtry), with values ranging from 8 to 12.
 
-```{r}
-#| echo: false
-2 * 2
+#### Random Forest Model 3: Full Model Including Health Conditions, Health Behaviors, Demographics, and Subjective Ratings
+
+```{r warning = FALSE, eval = FALSE}
+rf_fit3 <- train(Diabetes_binary ~ HighBP + HighChol + Stroke + Heart + BMI + Sex + Age + Education + Smoker + Alcohol + PhysActivity + Fruits + Veggies + MentHlth + PhysHlth + DiffWalk, data = dataTrain,
+             method = "rf",
+             metric = "logLoss",
+             family = "binomial",
+             ntree = 100,
+             preProcess = c("center", "scale"),
+             trControl = trainControl(method = "cv", number = 3, 
+                                      classProbs = TRUE, 
+                                      summaryFunction = mnLogLoss),
+             tuneGrid = data.frame(mtry = 8:12))
+
+rf_fit3
 ```
 
-## Final Model Selection 
+## Final Model Selection
 
-The `echo: false` option disables the printing of code (only output is displayed).
+For our logistic regression models, model 3 achieved a lower logLoss than models 1 and 2, indicating that using the full model with all predictors resulted in better predictions in our training data set. In comparing our classification trees, we see that model 1 and model 3 performed equally well, while model 2 clearly performed worse than the other two. Finally, when using random forest plots,
+
+We will now test the top model from each of our statistical approaches using our test data set to determine the winner! Although models 1 and 3 were tied for the best classification tree model, we will select model 3 in order to compare our predictions for this model across all three methods.
+
+First, we use the parameters derived from training each model and use these to predict outcomes with the test data. The code below will output the predicted probability of having diabetes for each observation in the test data using the trained parameters. These predictions will be saved in the named "pred" file in a column labeled "Yes".
+
+```{r}
+log_pred <- predict.train(log_fit3, newdata = dataTest, type = "prob")
+tree_pred <- predict.train(tree_fit3, newdata = dataTest, type = "prob")
+#rf_pred <- predict.train(rf_fit3, newdata = dataTest, type = "prob")
+```
+
+Next, we convert the Diabetes_binary variable within the test data set to a numeric variable that takes on values of 0 (no diabetes) or 1 (diabetes) to use for calculating logLoss with the Metrics package. For each model, we include the numeric test data variable and the predicted "Yes" column to obtain this value.
+
+```{r}
+dataTest <- dataTest |>
+  mutate(Diabetes_num = as.numeric(ifelse(Diabetes_binary == "Yes", 1, 0)))
+```
+
+### LogLoss for Test Data Predictions 
+
+#### Logistic Regression Model
+
+```{r}
+logLoss(dataTest$Diabetes_num, log_pred$Yes)
+```
+
+#### Classification Tree Model
+
+```{r}
+logLoss(dataTest$Diabetes_num, tree_pred$Yes)
+```
+
+#### Random Forest Model
+
+```{r}
+#logLoss(dataTest$Diabetes_num, rf_pred$Yes)
+```

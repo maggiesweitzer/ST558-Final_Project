@@ -10,7 +10,7 @@ editor: visual
 
 In these analyses, we will explore and model data on risk factors for diabetes from the 2015 Behavioral Risk Factor Surveillance System (BRFSS). Data are collected annually by phone using random digit dialing across all 50 states, resulting in over 250,000 adults over age 18 providing information about health conditions, health behaviors, and healthcare use. For the current analyses, we focus on the curated binary Diabetes Health Indicator Dataset. This dataset includes the variable "Diabetes_binary", which is coded as 1 to indicate a respondent has been told they have diabetes, and 0 if they have not. This variable will serve as the primary outcome for our predictions.
 
-The Diabetes Health Indicator Dataset also includes a subset of 21 additional variables selected from the broader survey based on their relevance to diabetes risk. These include the following:
+The Diabetes Health Indicator Dataset also includes a subset of additional variables selected from the broader survey based on their relevance to diabetes risk, which we will use for our predictive models. These include the following:
 
 -   Other binary physical health indicators (1 = yes, 0 = no)
 
@@ -30,23 +30,21 @@ The Diabetes Health Indicator Dataset also includes a subset of 21 additional va
     -   smoking \> 100 cigarettes lifetime
     -   drinking \> 14 drinks/week for men or 7 drinks/week for women)
 
--   Categorical demographic variables 
+-   Categorical demographic variables
 
     -   sex (1 = Male, 2 = Female)
-    -   age group (13 possible categories divided into 5-year bins ranging from 1 = (18 to 24) to 13 = (age 80 or older)) 
+    -   age group (13 possible categories divided into 5-year bins ranging from 1 = (18 to 24) to 13 = (age 80 or older))
     -   highest level of education completed (6 categories ranging from never attended school to collge graduate)
-    -   annual household income (8 categories ranging from 1 = (< $10,000) to 8 = ($75,000 or more))
 
--   Subjective ratings of health 
+-   Subjective ratings of health
 
-    -   perceived general health (5 point likert scale ranging from 1 = excellent to 5 = poor)
     -   number of days in the past 30 in which physical health was not good
     -   number of days in the past 30 in which mental health was not good
     -   a binary indicator of difficulty walking or climbing stairs.
 
 In the steps below, we will conduct exploratory data analysis to identify missing values, examine the distributions of our predictor variables, and explore preliminary associations between predictor variables and the diabetes outcome.
 
-## Identifying Missing Data
+## Preparing Data
 
 First, we will load necessary packages and read in the Diabetes Health Indicators Dataset.
 
@@ -57,12 +55,14 @@ data_tbl <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv")
 
 head(data_tbl)
 ```
-Next, we will determine the number of valid observations versus missing data. We see below that there are no NA values across any of the variables. 
+
+Next, we will determine the number of valid observations versus missing data. We see below that there are no NA values across any of the variables.
 
 ```{r}
 colSums(is.na(data_tbl))
 ```
-However, this is not suprising as the BRFSS surveys contain item-specific codes for responses of "don't know" or "refused to answer". We can probe how often responses fall outside of the categories described above and recode the data into factors with levels for true responses and NA for missing observations. First, we recode categorical variables as factors, simplify naming of a few variables, and select those that we need.
+
+However, this is not surprising as the BRFSS surveys contain item-specific codes for responses of "don't know" or "refused to answer". To probe how often these codes are used, we convert the categorical variables we are interest in into factors and then examine the structure to determine if categories representing missing data are being used.
 
 ```{r}
 data_factors_tbl <- data_tbl |>
@@ -77,22 +77,55 @@ data_factors_tbl <- data_tbl |>
          Fruits = as.factor(Fruits),
          Veggies = as.factor(Veggies),
          Alcohol = as.factor(HvyAlcoholConsump),
-         GenHlth = as.factor(GenHlth),
          DiffWalk = as.factor(DiffWalk),
          Sex = as.factor(Sex),
          Age = as.factor(Age),
-         Education = as.factor(Education),
-         Income = as.factor(Income)) |>
-  select(Diabetes_binary, HighBP, HighChol, CholCheck, BMI, Smoker, Stroke, Heart, PhysActivity, Fruits, Veggies, Alcohol, GenHlth, MentHlth, PhysHlth, DiffWalk, Sex, Age, Education, Income)
+         Education = as.factor(Education)) |>
+  select(Diabetes_binary, HighBP, HighChol, CholCheck, Smoker, Stroke, Heart, PhysActivity, Fruits, Veggies, Alcohol, DiffWalk, Sex, Age, Education)
 
-```
-
-Next, by looking at the structure of the data set we can see that binary variables include only 0 or 1 as possible levels. This leaves BMI, MentHlth, and PhysHlth as continuous variables, and GenHlth, Age, Education, and Income as factors with > 2 categories.  
-
-```{r}
 str(data_factors_tbl)
 ```
-We can examine summary statistics for continuous variables. We see below that all values for MentHlth and PhysHlth fall within the expected range of 0 to 30, whereas the maximum BMI value is 98, which seems biologically implausible. 
+
+Above, we see from looking at the structure of the data set that our binary variables include only 0 or 1 as possible levels. This leaves BMI, MentHlth, and PhysHlth as continuous variables, and Age and Education as factors with \> 2 categories.
+
+We can use plotting to explore the frequencies of categorical variables with \> 2 levels. We see below that all values fall within the expected range of coded categories, indicating that the data set has been fully cleaned and includes only respondents with complete data.
+
+```{r}
+g <- ggplot(data_factors_tbl) + geom_bar()
+
+g + aes(x = Age)
+g + aes(x = Education)
+```
+
+Before continuing on, we will return to our factors and recode them to have meaningful levels, which will also eliminate errors related to factor level naming in our modeling steps.
+
+```{r}
+
+data_factors_tbl <- data_tbl |>
+  mutate(Diabetes_binary = factor(Diabetes_binary, labels = c("No", "Yes")),
+         HighBP = factor(HighBP, labels = c("No", "Yes")),
+         HighChol = factor(HighChol, labels = c("No", "Yes")),
+         CholCheck = factor(CholCheck, labels = c("No", "Yes")),
+         Smoker = factor(Smoker, labels = c("No", "Yes")),
+         Stroke = factor(Stroke, labels = c("No", "Yes")),
+         Heart = factor(HeartDiseaseorAttack, labels = c("No", "Yes")),
+         PhysActivity = factor(PhysActivity, labels = c("No", "Yes")),
+         Fruits = factor(Fruits, labels = c("No", "Yes")),
+         Veggies = factor(Veggies, labels = c("No", "Yes")),
+         Alcohol = factor(HvyAlcoholConsump, labels = c("No", "Yes")),
+         DiffWalk = factor(DiffWalk, labels = c("No", "Yes")),
+         Sex = factor(Sex, labels = c("Male", "Female")),
+         Age = factor(Age, labels = c("Age18to24", "Age25to29", "Age30to34", "Age35to39", "Age40to44", "Age45to49", "Age50to54", "Age55to59", "Age60to64", "Age65to69", "Age70to74", "Age75to79", "Age80orOlder")),
+         Education = factor(Education, labels = c("NoSchool", "Elementary", "SomeHS", "HSGrad", "SomeCollege", "CollegeGrad")))|>
+  select(Diabetes_binary, HighBP, HighChol, CholCheck, BMI, Smoker, Stroke, Heart, PhysActivity, Fruits, Veggies, Alcohol, MentHlth, PhysHlth, DiffWalk, Sex, Age, Education)
+
+```
+
+## Summarizing Data
+
+### Distributions of Continuous Variables
+
+Now that we have our data structured in the way we want, We can begin to explore our data. First, we examine summary statistics for continuous variables. We see below that all values for MentHlth and PhysHlth fall within the expected range of 0 to 30, whereas the maximum BMI value is 98, which seems biologically implausible.
 
 ```{r}
 data_factors_tbl |>
@@ -102,13 +135,15 @@ data_factors_tbl |>
                         "min" = ~ min(.x)),
                    .names = "{.fn}_{.col}"))
 ```
-We can view the entire distribution of BMI using a histogram. We see below that values above ~ 60 are extremely rare. Given that there is not a spike in values of 98, this suggests that this is not being used as some sort of system code for missing data. 
+
+We can view the entire distribution of BMI using a histogram. We see below that values above \~ 60 are extremely rare. Given that there is not a spike in values of 98, this suggests that this is not being used as some sort of system code for missing data.
 
 ```{r}
 ggplot(data = data_factors_tbl, aes(x = BMI)) +
   geom_histogram()
 ```
-Below we see that there are 53 people with BMI > 90 and 7 with a BMI of 98. As such, it may be that these values represent rare but true values at the outer limits of the possible range for people with severe morbid obesity. 
+
+Below we see that there are 53 people with BMI \> 90 and 7 with a BMI of 98. As such, it may be that these values represent rare but true values at the outer limits of the possible range for people with severe morbid obesity.
 
 ```{r}
 data_factors_tbl |>
@@ -117,7 +152,8 @@ data_factors_tbl |>
 data_factors_tbl |>
   count(BMI > 97)
 ```
-We can also view MentHlth and PhysHlth in this way. We see that for both variables, the vast majority of respondents (~160,000 and 175,000, respectively) say they had 0 out of 30 days in which their health was not good, while a sizeable subset (~12,000 and 19,000, respectively) indicate their health was poor across all 30 days. 
+
+We can also view MentHlth and PhysHlth in this way. We see that for both variables, the vast majority of respondents (\~160,000 and 175,000, respectively) say they had 0 out of 30 days in which their health was not good, while a sizeable subset (\~12,000 and 19,000, respectively) indicate their health was poor across all 30 days.
 
 ```{r}
 ggplot(data = data_factors_tbl, aes(x = MentHlth)) +
@@ -139,20 +175,9 @@ data_factors_tbl |>
   count(MentHlth == 30)
 ```
 
-We can now turn to exploring frequencies of categorical variables with > 2 levels. We see below that all values fall within the expected range of coded categories, indicating that the data set has been fully cleaned and includes only respondents with complete data. 
+### Frequencies of Binary Outcomes
 
-```{r}
-g <- ggplot(data_factors_tbl) + geom_bar()
-
-g + aes(x = GenHlth)
-g + aes(x = Age)
-g + aes(x = Education)
-g + aes(x = Income)
-
-```
-## Summarizing Data
-
-We have already examined some of the distrubtions above, but we can also take a look at the binary outcomes to get a sense of the prevalence of diabetes and each of the risk factors. 
+Next, we turn to our categorical variables. We can look at the frequencies of our binary outcomes to get a sense of the prevalence of diabetes and each of the risk factors.
 
 ```{r}
 g + aes(x = Diabetes_binary) 
@@ -171,10 +196,16 @@ g + aes(x = PhysActivity)
 g + aes(x = Fruits)
 g + aes(x = Veggies)
 g + aes(x = DiffWalk)
+g + aes(x = Sex)
 ```
-We can see that some risk factors are more common than others. High blood pressure, high cholesterol, and history of smoking > 100 cigarettes are extremely common, whereas history of stroke or heart disease are far less common. 
 
-It is likely that many of these risk factors co-occur. Below, we create contingency tables to examine preliminary associations between predictors and with the diabetes outcome. 
+We can see that some risk factors are more common than others. High blood pressure, high cholesterol, and history of smoking \> 100 cigarettes are extremely common, whereas history of stroke or heart disease are far less common.
+
+### Prevalence of Diabetes as a Function of Risk Factors 
+
+#### Objective Health Conditions
+
+It is likely that many of these risk factors co-occur. Below, we create contingency tables to examine preliminary associations between predictors and with diabetes outcome.
 
 ```{r}
 data_factors_tbl |>
@@ -207,9 +238,10 @@ data_factors_tbl |>
   summarize(count = n()) |>
   pivot_wider(names_from = Heart, values_from = count)
 ```
-We can see from the tables above that the majority of people with diabetes also have high blood pressure and high cholesterol. Moreover, the majority of people with high blood pressure also have high cholesterol, and vice versa. Heart disease and stroke are not endorsed by the majority of respondents with diabetes, likely due to their lower overall prevalence, but the pattern of responses supports their status as risk factors. 
 
-One additional check we can make with health conditions is to examine how often not having high cholesterol is due to never having this checked. 
+We can see from the tables above that the majority of people with diabetes also have high blood pressure and high cholesterol. Moreover, the majority of people with high blood pressure also have high cholesterol, and vice versa. Heart disease and stroke are not endorsed by the majority of respondents with diabetes, likely due to their lower overall prevalence, but the pattern of responses supports their status as risk factors.
+
+One additional check we can make with health conditions is to examine how often not having high cholesterol is due to never having this checked.
 
 ```{r}
 data_factors_tbl |>
@@ -217,9 +249,12 @@ data_factors_tbl |>
   summarize(count = n()) |>
   pivot_wider(names_from = HighChol, values_from = count)
 ```
+
 We can see that the vast majority of people who report not having high cholesterol do indicate that they have had their cholesterol checked. It is interesting that 1981 people report that they have high cholesterol despite also indicating that they have never had their cholesterol checked, which is difficult to interpret.
 
-Next, we look at health behaviors. 
+#### Health Behaviors
+
+Next, we look at health behaviors.
 
 ```{r}
 data_factors_tbl |>
@@ -248,7 +283,7 @@ data_factors_tbl |>
   pivot_wider(names_from = Diabetes_binary, values_from = count)
 ```
 
-History of smoking and low physical activity appear to be more common in people with diabetes, but in general the patterns are not as striking as those of high blood pressure and cholesterol. 
+History of smoking and low physical activity appear to be more common in people with diabetes, but in general the patterns are not as striking as those of high blood pressure and cholesterol.
 
 ```{r}
 data_factors_tbl |>
@@ -267,4 +302,63 @@ data_factors_tbl |>
   pivot_wider(names_from = Veggies, values_from = count)
 ```
 
-Exploring contingencies between risk factors, we see that people who drink heavily and people with low physical activity are more likely to have smoked > 100 cigarettes. In addition, people who don't eat veggies much more likely to not eat fruits and vice versa.
+Exploring contingencies between risk factors, we see that people who drink heavily and people with low physical activity are more likely to have smoked \> 100 cigarettes. In addition, people who don't eat veggies are much more likely to not eat fruits and vice versa.
+
+#### Subjective Health Measures
+
+We can also look at frequency of diabetes as a function of subjective health. To simplify results, we'll look at the extremes (0 vs 30) of perceived mental and physical health.
+
+```{r}
+data_factors_tbl |>
+  group_by(DiffWalk, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count)
+
+data_factors_tbl |>
+  filter(MentHlth == 0 | MentHlth == 30) |>
+  group_by(MentHlth, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count)
+
+data_factors_tbl |>
+  filter(PhysHlth == 0 | PhysHlth == 30) |>
+  group_by(PhysHlth, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count)
+
+```
+Not surprising, it appears that diabetes is highly prevalent (25-35%) among those with difficulty walking or daily poor perceived health. The prevalence among people endorsing daily poor mental health also appears to be slightly elevated, but this is less striking than poor physical health.
+
+#### Demographic Variables
+
+Finally, we view the prevalence of diabetes as a function of age, sex, and education level. We see below that the prevalence of diabetes increases with age and decreases at higher levels of education. Prevalence of diabetes is approximately 15% for females and 13% for males. 
+
+```{r}
+age <- data_factors_tbl |>
+  group_by(Age, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count) |>
+  mutate(percent = Yes/(Yes + No))
+
+age 
+
+sex <- data_factors_tbl |>
+  group_by(Sex, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count) |>
+  mutate(percent = Yes/(Yes + No))
+
+sex
+
+educ <- data_factors_tbl |>
+  group_by(Education, Diabetes_binary) |>
+  summarize(count = n()) |>
+  pivot_wider(names_from = Diabetes_binary, values_from = count) |>
+  mutate(percent = Yes/(Yes + No))
+
+educ
+```
+
+Next, we will turn to modeling our data and examining our ability to predict diabetes outcomes with our risk factor variables.
+
+[Click here for the modeling page.](Modeling.html)
